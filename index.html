@@ -29,6 +29,22 @@
   </section>
 
   <section>
+  <h2>Featured ICE Video Reports</h2>
+  <div id="featured-ice-videos"></div>
+</section>
+<script>
+  // Dynamically load the featured ICE videos section
+  fetch('featured/ice-videos.html')
+    .then(r => r.text())
+    .then(html => {
+      document.getElementById('featured-ice-videos').innerHTML = html;
+    })
+    .catch(() => {
+      document.getElementById('featured-ice-videos').textContent = "Unable to load featured videos.";
+    });
+</script>
+
+  <section>
     <h2>ICE Watch Feed (Bluesky)</h2>
     <a href="https://bsky.app/profile/did:plc:z4btti5mopfxgfbxe2ewgms7/feed/aaajtkdsnyd7a" target="_blank" rel="noopener" style="display:inline-block;margin:1rem 0 2rem 0;font-weight:bold;font-size:1.1rem;">
       View Full ICE Watch Feed on Bluesky →
