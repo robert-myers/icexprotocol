@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ICE × Protocol – Live Detention Count</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; color:#222; }
+    header { border-bottom: 1px solid #ddd; padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.6rem; margin: 0; }
+    .count { font-size: 2.5rem; margin: 1.2rem 0; }
+    button { background:#000; color:#fff; border:none; padding:0.6rem 1.2rem; font-size:1rem; cursor:pointer; }
+    footer { margin-top:3rem; font-size:0.85rem; color:#666; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ICE × Protocol</h1>
+    <p>Continuous public-data feed on U.S. Immigration and Customs Enforcement operations.</p>
+  </header>
+
+  <section>
+    <h2>Detentions in the Last 24 Hours</h2>
+    <div class="count" id="count">…</div>
+  </section>
+
+  <button onclick="window.open('https://patreon.com/RobertSaintLawrence','_blank')">
+    Support the Project
+  </button>
+
+  <footer>
+    Data sourced exclusively from publicly accessible government endpoints.<br>
+    ICE × Protocol is an independent civic-tech initiative and is not affiliated with DHS or ICE.
+  </footer>
+
+  <script>
+    fetch('data/detentions.json')
+      .then(r => r.json())
+      .then(d => { document.getElementById('count').textContent = d.total ?? 'unavailable'; })
+      .catch(() => { document.getElementById('count').textContent = 'error'; });
+  </script>
+</body>
+</html>
