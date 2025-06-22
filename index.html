@@ -24,6 +24,7 @@
     <h2>Total People Currently in ICE Detention</h2>
     <span style="font-size:1rem;color:#666;">
       Updated from public records
+      <span id="detention-date"></span>
     </span>
     <div class="count" id="count">…</div>
   </section>
@@ -65,7 +66,12 @@
   <script>
     fetch('data/detentions.json')
       .then(r => r.json())
-      .then(d => { document.getElementById('count').textContent = d.total ?? 'unavailable'; })
+      .then(d => {
+        document.getElementById('count').textContent = d.total ?? 'unavailable';
+        if (d.date) {
+          document.getElementById('detention-date').textContent = ` (as of ${d.date})`;
+        }
+      })
       .catch(() => { document.getElementById('count').textContent = 'error'; });
   </script>
 </body>
