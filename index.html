@@ -28,21 +28,23 @@
     <div class="count" id="count">…</div>
   </section>
 
+  <!--
   <section>
-  <h2>Featured ICE Video Reports</h2>
-  <div id="featured-ice-videos"></div>
-</section>
-<script>
-  // Dynamically load the featured ICE videos section
-  fetch('featured/ice-videos.html')
-    .then(r => r.text())
-    .then(html => {
-      document.getElementById('featured-ice-videos').innerHTML = html;
-    })
-    .catch(() => {
-      document.getElementById('featured-ice-videos').textContent = "Unable to load featured videos.";
-    });
-</script>
+    <h2>Featured ICE Video Reports</h2>
+    <div id="featured-ice-videos"></div>
+  </section>
+  <script>
+    // Dynamically load the featured ICE videos section
+    fetch('featured/ice-videos.html')
+      .then(r => r.text())
+      .then(html => {
+        document.getElementById('featured-ice-videos').innerHTML = html;
+      })
+      .catch(() => {
+        document.getElementById('featured-ice-videos').textContent = "Unable to load featured videos.";
+      });
+  </script>
+  -->
 
   <section>
     <h2>ICE Watch Feed (Bluesky)</h2>
