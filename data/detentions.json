@@ -1,1 +1,8 @@
-{"total": 56397, "date": "June 15, 2025"}
+{
+  "detention_total": 56397,
+  "detention_total_date": "June 15, 2025",
+  "no_criminal_record": 40433,
+  "no_criminal_record_date": "June 15, 2025",
+  "atd_monitored": 183756,
+  "atd_monitored_date": "June 14, 2025"
+}

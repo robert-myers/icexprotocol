@@ -27,6 +27,8 @@
       <span id="detention-date"></span>
     </span>
     <div class="count" id="count">…</div>
+    <div id="metric-nocrim" style="font-size:1rem;color:#666;margin-top:0.5rem;"></div>
+    <div id="metric-atd" style="font-size:1rem;color:#666;margin-top:0.5rem;"></div>
   </section>
 
   <!--
@@ -67,9 +69,29 @@
     fetch('data/detentions.json')
       .then(r => r.json())
       .then(d => {
-        document.getElementById('count').textContent = d.total ?? 'unavailable';
-        if (d.date) {
-          document.getElementById('detention-date').textContent = ` (as of ${d.date})`;
+        // Total in detention
+        document.getElementById('count').textContent =
+          d.detention_total?.toLocaleString?.() ?? 'unavailable';
+
+        // Date for total
+        document.getElementById('detention-date').textContent =
+          d.detention_total_date ? ` (as of ${d.detention_total_date})` : '';
+
+        // No‑criminal‑record metric
+        if (d.no_criminal_record && d.detention_total) {
+          const pct = ((d.no_criminal_record / d.detention_total) * 100).toFixed(1);
+          document.getElementById('metric-nocrim').textContent =
+            `${d.no_criminal_record.toLocaleString()} people (${pct}%) in ICE detention had no criminal record (as of ${d.no_criminal_record_date}).`;
+        } else {
+          document.getElementById('metric-nocrim').textContent = '';
+        }
+
+        // ATD monitored metric
+        if (d.atd_monitored) {
+          document.getElementById('metric-atd').textContent =
+            `ICE Alternatives to Detention programs are currently monitoring ${d.atd_monitored.toLocaleString()} people (as of ${d.atd_monitored_date}).`;
+        } else {
+          document.getElementById('metric-atd').textContent = '';
         }
       })
       .catch(() => { document.getElementById('count').textContent = 'error'; });
