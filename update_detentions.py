@@ -27,13 +27,13 @@ for d in dates:
 output["detention_total_date"] = detention_date
 
 
-# 3. No criminal record stats
+# 3. No criminal conviction stats
 nocrim_number = None
 nocrim_date = None
-record_text_node = soup.find(string=lambda t: "no criminal record" in t.lower())
-if record_text_node:
+conviction_text_node = soup.find(string=lambda t: "no criminal conviction" in t.lower())
+if conviction_text_node:
     # Work within the surrounding grid card for this fact
-    container = record_text_node.find_parent("div", class_="grid")
+    container = conviction_text_node.find_parent("div", class_="grid")
     if container:
         # Find the first numeric <strong> inside this card (that is NOT a percent)
         for strong in container.find_all("strong"):
@@ -47,8 +47,8 @@ if record_text_node:
                 nocrim_date = strong.text.strip()
                 break
 
-output["no_criminal_record"] = nocrim_number
-output["no_criminal_record_date"] = nocrim_date
+output["no_criminal_conviction"] = nocrim_number
+output["no_criminal_conviction_date"] = nocrim_date
 
 
 # 4. ATD monitored stats

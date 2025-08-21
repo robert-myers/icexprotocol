@@ -1,8 +1,8 @@
 {
   "detention_total": 59380,
   "detention_total_date": "August 10, 2025",
-  "no_criminal_record": null,
-  "no_criminal_record_date": null,
+  "no_criminal_conviction": 41822,
+  "no_criminal_conviction_date": "August 10, 2025",
   "atd_monitored": 182617,
   "atd_monitored_date": "August 9, 2025"
 }

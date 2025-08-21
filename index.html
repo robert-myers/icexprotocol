@@ -74,11 +74,11 @@
         document.getElementById('detention-date').textContent =
           d.detention_total_date ? ` (as of ${d.detention_total_date})` : '';
 
-        // No‑criminal‑record metric
-        if (d.no_criminal_record && d.detention_total) {
-          const pct = ((d.no_criminal_record / d.detention_total) * 100).toFixed(1);
+        // No‑criminal‑conviction metric
+        if (d.no_criminal_conviction && d.detention_total) {
+          const pct = ((d.no_criminal_conviction / d.detention_total) * 100).toFixed(1);
           document.getElementById('metric-nocrim').textContent =
-            `${d.no_criminal_record.toLocaleString()} people (${pct}%) in ICE detention had no criminal record (as of ${d.no_criminal_record_date}).`;
+            `${d.no_criminal_conviction.toLocaleString()} people (${pct}%) in ICE detention had no criminal conviction (as of ${d.no_criminal_conviction_date}).`;
         } else {
           document.getElementById('metric-nocrim').textContent = '';
         }
