@@ -11,8 +11,13 @@
     .count { font-size: 2.5rem; margin: 1.2rem 0; }
     button { background:#000; color:#fff; border:none; padding:0.6rem 1.2rem; font-size:1rem; cursor:pointer; }
     footer { margin-top:3rem; font-size:0.85rem; color:#666; }
+    .chart-card { margin-top: 2rem; padding: 1rem; border: 1px solid #eee; border-radius: 0.75rem; }
+    .chart-card h2 { margin-top: 0; }
+    #chart-placeholder { color: #666; font-size: 0.95rem; margin-top: 0.75rem; }
+    canvas { max-width: 100%; height: auto; display: block; }
   </style>
   <script async src="https://cdn.jsdelivr.net/npm/bsky-embed/dist/bsky-embed.es.js" type="module"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
@@ -49,6 +54,12 @@
   </script>
   -->
 
+  <section class="chart-card">
+    <h2>Detention Trend</h2>
+    <canvas id="detention-chart" height="180" role="img" aria-label="Line chart showing ICE detention totals over time"></canvas>
+    <div id="chart-placeholder">Historical trend data will appear after multiple snapshots are collected.</div>
+  </section>
+
   <section>
     <h2><a href="https://bsky.app/profile/did:plc:z4btti5mopfxgfbxe2ewgms7/feed/aaajtkdsnyd7a" target="_blank" rel="noopener" style="color: #1a0dab; text-decoration: underline;">ICE Watch Feed (Bluesky)</a></h2>
   </section>
@@ -63,6 +74,141 @@
   </footer>
 
   <script>
+    let detentionChart;
+
+    function scheduleTrend(history) {
+      if (typeof Chart !== 'undefined') {
+        renderTrend(history);
+        return;
+      }
+
+      const chartScript = document.querySelector('script[src*="chart.umd.min.js"]');
+      if (chartScript) {
+        chartScript.addEventListener('load', () => renderTrend(history), { once: true });
+      }
+    }
+
+    function renderTrend(history) {
+      const placeholder = document.getElementById('chart-placeholder');
+      const canvas = document.getElementById('detention-chart');
+      if (!canvas) {
+        return;
+      }
+
+      if (!Array.isArray(history) || history.length < 2 || typeof Chart === 'undefined') {
+        if (placeholder) {
+          placeholder.style.display = 'block';
+        }
+        if (detentionChart) {
+          detentionChart.destroy();
+          detentionChart = undefined;
+        }
+        return;
+      }
+
+      const cleaned = history
+        .filter(entry => entry && typeof entry.detention_total === 'number' && (entry.detention_total_date || entry.captured_at))
+        .map(entry => ({
+          date: entry.detention_total_date || entry.captured_at,
+          detention_total: entry.detention_total,
+          captured_at: entry.captured_at,
+        }));
+
+      const parseTime = item => {
+        const direct = Date.parse(item.date);
+        if (!Number.isNaN(direct)) {
+          return direct;
+        }
+        const fallback = item.captured_at ? Date.parse(item.captured_at) : NaN;
+        return Number.isNaN(fallback) ? 0 : fallback;
+      };
+
+      cleaned.sort((a, b) => parseTime(a) - parseTime(b));
+
+      const points = [];
+      cleaned.forEach(item => {
+        if (!points.length) {
+          points.push(item);
+          return;
+        }
+
+        const last = points[points.length - 1];
+        if (last.date === item.date && last.detention_total === item.detention_total) {
+          points[points.length - 1] = item;
+        } else {
+          points.push(item);
+        }
+      });
+
+      if (points.length < 2) {
+        if (placeholder) {
+          placeholder.style.display = 'block';
+        }
+        return;
+      }
+
+      const labels = points.map(point => {
+        const date = new Date(point.date);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        return point.date;
+      });
+      const dataPoints = points.map(point => point.detention_total);
+
+      if (placeholder) {
+        placeholder.style.display = 'none';
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (detentionChart) {
+        detentionChart.data.labels = labels;
+        detentionChart.data.datasets[0].data = dataPoints;
+        detentionChart.update();
+        return;
+      }
+
+      detentionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'People in ICE detention',
+              data: dataPoints,
+              fill: false,
+              tension: 0.25,
+              borderColor: '#0a63ff',
+              backgroundColor: 'rgba(10, 99, 255, 0.2)',
+              pointRadius: 3,
+              pointHoverRadius: 5,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: context => `${context.parsed.y.toLocaleString()} people`
+              }
+            }
+          },
+          scales: {
+            y: {
+              ticks: {
+                callback: value => Number(value).toLocaleString()
+              }
+            }
+          }
+        }
+      });
+    }
+
     fetch('data/detentions.json')
       .then(r => r.json())
       .then(d => {
@@ -90,6 +236,8 @@
         } else {
           document.getElementById('metric-atd').textContent = '';
         }
+
+        scheduleTrend(d.history);
       })
       .catch(() => { document.getElementById('count').textContent = 'error'; });
   </script>

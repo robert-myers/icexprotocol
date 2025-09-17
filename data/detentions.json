@@ -4,5 +4,16 @@
   "no_criminal_conviction": 41589,
   "no_criminal_conviction_date": "September 7, 2025",
   "atd_monitored": 181401,
-  "atd_monitored_date": "September 6, 2025"
+  "atd_monitored_date": "September 6, 2025",
+  "history": [
+    {
+      "detention_total": 58766,
+      "detention_total_date": "September 7, 2025",
+      "no_criminal_conviction": 41589,
+      "no_criminal_conviction_date": "September 7, 2025",
+      "atd_monitored": 181401,
+      "atd_monitored_date": "September 6, 2025",
+      "captured_at": "2025-09-17T15:25:10.902835+00:00"
+    }
+  ]
 }
