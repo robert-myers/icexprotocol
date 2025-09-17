@@ -22,6 +22,8 @@
     .history-table th, .history-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
     .history-table th:nth-child(n + 2), .history-table td:nth-child(n + 2) { text-align: right; }
     .history-table tbody tr:hover { background-color: #f9f9f9; }
+    .history-table__more { margin-top: 0.75rem; font-size: 0.95rem; }
+    .history-table__more a { color: #1a0dab; text-decoration: underline; }
     footer { margin-top:3rem; font-size:0.85rem; color:#666; }
     @media (max-width: 600px) {
       body { margin: 1.5rem; }
@@ -357,7 +359,7 @@
         return;
       }
       const sorted = sortEntriesByTimestamp(history, 'desc');
-      const rows = sorted.slice(0, 7);
+      const rows = sorted.slice(0, 5);
 
       const table = document.createElement('table');
       const thead = document.createElement('thead');
@@ -387,6 +389,11 @@
       table.appendChild(tbody);
 
       container.appendChild(table);
+
+      const moreLink = document.createElement('p');
+      moreLink.className = 'history-table__more';
+      moreLink.innerHTML = 'Showing the five most recent reports. <a href="detention-history.html">View full detention history</a>.';
+      container.appendChild(moreLink);
     }
 
     async function loadDashboard() {

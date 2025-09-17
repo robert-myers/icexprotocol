@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ICE × Protocol – Detention Report Archive</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; color:#222; }
+    header { border-bottom: 1px solid #ddd; padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.6rem; margin: 0; }
+    h2 { font-size: 1.3rem; margin: 0 0 0.75rem; }
+    main { max-width: 960px; }
+    section { margin-bottom: 2.5rem; }
+    .history-summary { font-size: 0.95rem; color: #555; margin: -0.35rem 0 1.25rem; }
+    .history-table { overflow-x: auto; }
+    .history-table table { border-collapse: collapse; min-width: 360px; width: 100%; }
+    .history-table th, .history-table td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+    .history-table th:nth-child(n + 2), .history-table td:nth-child(n + 2) { text-align: right; }
+    .history-table tbody tr:hover { background-color: #f9f9f9; }
+    .history-table caption { text-align: left; font-weight: 600; margin-bottom: 0.5rem; }
+    .back-link { margin-top: 2.5rem; font-size: 0.95rem; }
+    .back-link a { color: #1a0dab; text-decoration: underline; }
+    footer { margin-top:3rem; font-size:0.85rem; color:#666; }
+    @media (max-width: 600px) {
+      body { margin: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ICE × Protocol</h1>
+    <p>Continuous public-data feed on U.S. Immigration and Customs Enforcement operations.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Detention Report Archive</h2>
+      <p class="history-summary" id="history-summary">Loading history summary…</p>
+      <div class="history-table history-table--full" id="history-table">Loading full detention history…</div>
+    </section>
+
+    <p class="back-link"><a href="index.html">&larr; Back to live dashboard</a></p>
+  </main>
+
+  <footer>
+    Data sourced exclusively from publicly accessible government endpoints.<br>
+    ICE × Protocol is an independent civic-tech initiative and is not affiliated with DHS or ICE.
+  </footer>
+
+  <script>
+    const numberFormatter = new Intl.NumberFormat('en-US');
+
+    function formatNumber(value) {
+      return Number.isFinite(value) ? numberFormatter.format(value) : '—';
+    }
+
+    function parseEntryDate(entry) {
+      if (!entry) {
+        return null;
+      }
+      if (typeof entry.detention_total_date === 'string') {
+        const parsed = Date.parse(`${entry.detention_total_date} UTC`);
+        if (!Number.isNaN(parsed)) {
+          return new Date(parsed);
+        }
+      }
+      if (typeof entry.retrieved_at === 'string') {
+        const parsed = Date.parse(entry.retrieved_at);
+        if (!Number.isNaN(parsed)) {
+          return new Date(parsed);
+        }
+      }
+      return null;
+    }
+
+    function getEntryTimestamp(entry) {
+      const parsed = parseEntryDate(entry);
+      return parsed ? parsed.getTime() : Number.NaN;
+    }
+
+    function formatEntryDate(entry) {
+      const parsed = parseEntryDate(entry);
+      if (parsed) {
+        return parsed.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      }
+      if (entry && typeof entry.detention_total_date === 'string') {
+        return entry.detention_total_date;
+      }
+      if (entry && typeof entry.retrieved_at === 'string') {
+        return entry.retrieved_at;
+      }
+      return 'Unknown date';
+    }
+
+    function formatRetrievedAt(entry) {
+      if (!entry || typeof entry.retrieved_at !== 'string') {
+        return '';
+      }
+      const parsed = Date.parse(entry.retrieved_at);
+      if (Number.isNaN(parsed)) {
+        return entry.retrieved_at;
+      }
+      return new Date(parsed).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'UTC',
+        timeZoneName: 'short'
+      });
+    }
+
+    function sortEntriesByTimestamp(history, direction = 'asc') {
+      const entries = history.map(entry => ({
+        entry,
+        timestamp: getEntryTimestamp(entry)
+      }));
+      entries.sort((a, b) => {
+        const aValid = Number.isFinite(a.timestamp);
+        const bValid = Number.isFinite(b.timestamp);
+        if (!aValid && !bValid) {
+          return 0;
+        }
+        if (!aValid) {
+          return 1;
+        }
+        if (!bValid) {
+          return -1;
+        }
+        return direction === 'desc' ? b.timestamp - a.timestamp : a.timestamp - b.timestamp;
+      });
+      return entries.map(item => item.entry);
+    }
+
+    function sanitizeHistory(historyData) {
+      if (!Array.isArray(historyData)) {
+        return [];
+      }
+      return historyData
+        .filter(item => item && typeof item === 'object')
+        .map(item => ({ ...item }));
+    }
+
+    function ensureCurrentSnapshot(history, current) {
+      const entries = history.slice();
+      if (!current || typeof current !== 'object') {
+        return entries;
+      }
+      const match = entries.some(
+        entry =>
+          entry.detention_total === current.detention_total &&
+          entry.detention_total_date === current.detention_total_date
+      );
+      if (!match) {
+        const addition = { ...current };
+        if (typeof addition.retrieved_at !== 'string') {
+          addition.retrieved_at = new Date().toISOString();
+        }
+        entries.push(addition);
+      }
+      return entries;
+    }
+
+    function renderHistorySummary(history) {
+      const summary = document.getElementById('history-summary');
+      if (!summary) {
+        return;
+      }
+      if (!history.length) {
+        summary.textContent = 'Historical data unavailable at this time.';
+        return;
+      }
+      const sorted = sortEntriesByTimestamp(history, 'asc');
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const firstLabel = formatEntryDate(first);
+      const lastLabel = formatEntryDate(last);
+      if (firstLabel === lastLabel) {
+        summary.textContent = `Latest verified update: ${lastLabel}.`;
+      } else {
+        summary.textContent = `Tracking ${sorted.length} verified updates from ${firstLabel} through ${lastLabel}.`;
+      }
+    }
+
+    function renderFullHistoryTable(history) {
+      const container = document.getElementById('history-table');
+      if (!container) {
+        return;
+      }
+      container.innerHTML = '';
+      if (!history.length) {
+        container.textContent = 'Historical data unavailable at this time.';
+        return;
+      }
+
+      const sorted = sortEntriesByTimestamp(history, 'desc');
+
+      const table = document.createElement('table');
+      table.innerHTML = '<caption>Every detention report captured by ICE × Protocol</caption>';
+
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th scope="col">Report date</th><th scope="col">In detention</th><th scope="col">No conviction</th><th scope="col">ATD monitored</th></tr>';
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      sorted.forEach(entry => {
+        const row = document.createElement('tr');
+
+        const dateCell = document.createElement('td');
+        dateCell.textContent = formatEntryDate(entry);
+        const retrieved = formatRetrievedAt(entry);
+        if (retrieved) {
+          dateCell.title = `Snapshot captured ${retrieved}`;
+        }
+        row.appendChild(dateCell);
+
+        ['detention_total', 'no_criminal_conviction', 'atd_monitored'].forEach(key => {
+          const cell = document.createElement('td');
+          cell.textContent = formatNumber(entry[key]);
+          row.appendChild(cell);
+        });
+
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+
+      container.appendChild(table);
+    }
+
+    async function loadHistory() {
+      try {
+        const currentPromise = fetch('data/detentions.json', { cache: 'no-store' }).then(response => {
+          if (!response.ok) {
+            throw new Error('Unable to load detention metrics.');
+          }
+          return response.json();
+        });
+
+        const historyPromise = fetch('data/detentions_history.json', { cache: 'no-store' })
+          .then(response => (response.ok ? response.json() : []))
+          .catch(() => []);
+
+        const [currentData, historyRaw] = await Promise.all([currentPromise, historyPromise]);
+        const history = ensureCurrentSnapshot(sanitizeHistory(historyRaw), currentData);
+
+        renderHistorySummary(history);
+        renderFullHistoryTable(history);
+      } catch (error) {
+        console.error('Unable to load detention history data.', error);
+        const container = document.getElementById('history-table');
+        if (container) {
+          container.textContent = 'Unable to load detention history at this time.';
+        }
+        const summary = document.getElementById('history-summary');
+        if (summary) {
+          summary.textContent = '';
+        }
+      }
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>
