@@ -1,13 +1,15 @@
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 import requests
 from bs4 import BeautifulSoup, Tag
 
 URL = "https://tracreports.org/immigration/quickfacts/"
 OUTPUT_PATH = Path("data/detentions.json")
+HISTORY_PATH = Path("data/detentions_history.json")
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; ICE x Protocol scraper/1.0; +https://icexprotocol.com/)"
 }
@@ -103,6 +105,88 @@ def _is_likely_year(text: str, index: int) -> bool:
     return bool(MONTH_RE.search(context))
 
 
+def _load_history(path: Path) -> List[Dict[str, object]]:
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    cleaned: List[Dict[str, object]] = []
+    for entry in data:
+        if isinstance(entry, dict):
+            cleaned.append(dict(entry))
+    return cleaned
+
+
+FALLBACK_HISTORY_DATE = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _history_sort_key(entry: Dict[str, object]) -> datetime:
+    date_text = entry.get("detention_total_date")
+    if isinstance(date_text, str):
+        try:
+            parsed = datetime.strptime(date_text, "%B %d, %Y")
+        except ValueError:
+            parsed = None
+        else:
+            return parsed.replace(tzinfo=timezone.utc)
+
+    retrieved = entry.get("retrieved_at")
+    if isinstance(retrieved, str):
+        iso_value = retrieved.rstrip("Z") + ("+00:00" if retrieved.endswith("Z") else "")
+        try:
+            parsed = datetime.fromisoformat(iso_value)
+        except ValueError:
+            parsed = None
+        else:
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed
+
+    return FALLBACK_HISTORY_DATE
+
+
+def update_history(snapshot: Dict[str, object]) -> None:
+    history = _load_history(HISTORY_PATH)
+    timestamp = (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    entry = dict(snapshot)
+    entry["retrieved_at"] = timestamp
+
+    tracked_keys = (
+        "detention_total",
+        "detention_total_date",
+        "no_criminal_conviction",
+        "no_criminal_conviction_date",
+        "atd_monitored",
+        "atd_monitored_date",
+    )
+
+    match_index = None
+    for index in range(len(history) - 1, -1, -1):
+        existing = history[index]
+        if all(existing.get(key) == entry.get(key) for key in tracked_keys):
+            match_index = index
+            break
+
+    if match_index is not None:
+        updated_entry = dict(history[match_index])
+        updated_entry["retrieved_at"] = entry["retrieved_at"]
+        history[match_index] = updated_entry
+    else:
+        history.append(entry)
+
+    history.sort(key=_history_sort_key)
+    HISTORY_PATH.write_text(json.dumps(history, indent=2))
+
+
 def main() -> None:
     soup = fetch_soup(URL)
 
@@ -127,6 +211,7 @@ def main() -> None:
         raise ScraperError(f"Missing values for: {', '.join(missing)}")
 
     OUTPUT_PATH.write_text(json.dumps(output, indent=2))
+    update_history(output)
     print(json.dumps(output, indent=2))
 
 
