@@ -8,11 +8,28 @@
     body { font-family: system-ui, sans-serif; margin: 2rem; color:#222; }
     header { border-bottom: 1px solid #ddd; padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
     h1 { font-size: 1.6rem; margin: 0; }
+    section { margin-bottom: 2.5rem; }
+    h2 { font-size: 1.2rem; margin: 0 0 0.75rem; }
+    .trend-subtitle { font-size: 0.95rem; color: #555; margin: -0.25rem 0 1rem; }
     .count { font-size: 2.5rem; margin: 1.2rem 0; }
     button { background:#000; color:#fff; border:none; padding:0.6rem 1.2rem; font-size:1rem; cursor:pointer; }
+    .chart-wrapper { position: relative; height: 280px; max-width: 720px; margin-top: 1rem; }
+    .chart-wrapper canvas { width: 100% !important; height: 100% !important; }
+    .chart-wrapper.chart-wrapper--hidden { display: none; }
+    .trend-note { font-size: 0.9rem; color: #555; margin-top: 0.75rem; }
+    .history-table { margin-top: 1.25rem; overflow-x: auto; }
+    .history-table table { border-collapse: collapse; min-width: 320px; width: 100%; }
+    .history-table th, .history-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+    .history-table th:nth-child(n + 2), .history-table td:nth-child(n + 2) { text-align: right; }
+    .history-table tbody tr:hover { background-color: #f9f9f9; }
     footer { margin-top:3rem; font-size:0.85rem; color:#666; }
+    @media (max-width: 600px) {
+      body { margin: 1.5rem; }
+      .chart-wrapper { height: 220px; }
+    }
   </style>
   <script async src="https://cdn.jsdelivr.net/npm/bsky-embed/dist/bsky-embed.es.js" type="module"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
@@ -29,6 +46,16 @@
     <div class="count" id="count">…</div>
     <div id="metric-nocrim" style="font-size:1rem;color:#666;margin-top:0.5rem;"></div>
     <div id="metric-atd" style="font-size:1rem;color:#666;margin-top:0.5rem;"></div>
+  </section>
+
+  <section class="trend-section">
+    <h2>Detention Trend</h2>
+    <p class="trend-subtitle">Historical totals from TRAC's published detention updates.</p>
+    <div class="chart-wrapper">
+      <canvas id="detention-chart" role="img" aria-label="Line chart showing ICE detention totals over time"></canvas>
+    </div>
+    <p class="trend-note" id="trend-note">Loading historical data…</p>
+    <div class="history-table" id="history-table">Loading historical snapshots…</div>
   </section>
 
   <!--
@@ -63,35 +90,337 @@
   </footer>
 
   <script>
-    fetch('data/detentions.json')
-      .then(r => r.json())
-      .then(d => {
-        // Total in detention
-        document.getElementById('count').textContent =
-          d.detention_total?.toLocaleString?.() ?? 'unavailable';
+    const numberFormatter = new Intl.NumberFormat('en-US');
 
-        // Date for total
-        document.getElementById('detention-date').textContent =
-          d.detention_total_date ? ` (as of ${d.detention_total_date})` : '';
+    function formatNumber(value) {
+      return Number.isFinite(value) ? numberFormatter.format(value) : '—';
+    }
 
-        // No‑criminal‑conviction metric
-        if (d.no_criminal_conviction && d.detention_total) {
-          const pct = ((d.no_criminal_conviction / d.detention_total) * 100).toFixed(1);
-          document.getElementById('metric-nocrim').textContent =
-            `${d.no_criminal_conviction.toLocaleString()} people (${pct}%) in ICE detention had no criminal conviction (as of ${d.no_criminal_conviction_date}).`;
-        } else {
-          document.getElementById('metric-nocrim').textContent = '';
+    function parseEntryDate(entry) {
+      if (!entry) {
+        return null;
+      }
+      if (typeof entry.detention_total_date === 'string') {
+        const parsed = Date.parse(`${entry.detention_total_date} UTC`);
+        if (!Number.isNaN(parsed)) {
+          return new Date(parsed);
         }
-
-        // ATD monitored metric
-        if (d.atd_monitored) {
-          document.getElementById('metric-atd').textContent =
-            `ICE Alternatives to Detention programs are currently monitoring ${d.atd_monitored.toLocaleString()} people (as of ${d.atd_monitored_date}).`;
-        } else {
-          document.getElementById('metric-atd').textContent = '';
+      }
+      if (typeof entry.retrieved_at === 'string') {
+        const parsed = Date.parse(entry.retrieved_at);
+        if (!Number.isNaN(parsed)) {
+          return new Date(parsed);
         }
-      })
-      .catch(() => { document.getElementById('count').textContent = 'error'; });
+      }
+      return null;
+    }
+
+    function getEntryTimestamp(entry) {
+      const parsed = parseEntryDate(entry);
+      return parsed ? parsed.getTime() : Number.NaN;
+    }
+
+    function formatEntryDate(entry) {
+      const parsed = parseEntryDate(entry);
+      if (parsed) {
+        return parsed.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      }
+      if (entry && typeof entry.detention_total_date === 'string') {
+        return entry.detention_total_date;
+      }
+      if (entry && typeof entry.retrieved_at === 'string') {
+        return entry.retrieved_at;
+      }
+      return 'Unknown date';
+    }
+
+    function formatRetrievedAt(entry) {
+      if (!entry || typeof entry.retrieved_at !== 'string') {
+        return '';
+      }
+      const parsed = Date.parse(entry.retrieved_at);
+      if (Number.isNaN(parsed)) {
+        return entry.retrieved_at;
+      }
+      return new Date(parsed).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'UTC',
+        timeZoneName: 'short'
+      });
+    }
+
+    function sortEntriesByTimestamp(history, direction = 'asc') {
+      const entries = history.map(entry => ({
+        entry,
+        timestamp: getEntryTimestamp(entry)
+      }));
+      entries.sort((a, b) => {
+        const aValid = Number.isFinite(a.timestamp);
+        const bValid = Number.isFinite(b.timestamp);
+        if (!aValid && !bValid) {
+          return 0;
+        }
+        if (!aValid) {
+          return 1;
+        }
+        if (!bValid) {
+          return -1;
+        }
+        return direction === 'desc' ? b.timestamp - a.timestamp : a.timestamp - b.timestamp;
+      });
+      return entries.map(item => item.entry);
+    }
+
+    function sanitizeHistory(historyData) {
+      if (!Array.isArray(historyData)) {
+        return [];
+      }
+      return historyData
+        .filter(item => item && typeof item === 'object')
+        .map(item => ({ ...item }));
+    }
+
+    function ensureCurrentSnapshot(history, current) {
+      const entries = history.slice();
+      if (!current || typeof current !== 'object') {
+        return entries;
+      }
+      const match = entries.some(
+        entry =>
+          entry.detention_total === current.detention_total &&
+          entry.detention_total_date === current.detention_total_date
+      );
+      if (!match) {
+        const addition = { ...current };
+        if (typeof addition.retrieved_at !== 'string') {
+          addition.retrieved_at = new Date().toISOString();
+        }
+        entries.push(addition);
+      }
+      return entries;
+    }
+
+    function updateCurrentMetrics(d) {
+      const total = Number.isFinite(d.detention_total) ? d.detention_total : null;
+      const countEl = document.getElementById('count');
+      if (countEl) {
+        countEl.textContent = total !== null ? numberFormatter.format(total) : 'unavailable';
+      }
+
+      const dateEl = document.getElementById('detention-date');
+      if (dateEl) {
+        dateEl.textContent = d.detention_total_date ? ` (as of ${d.detention_total_date})` : '';
+      }
+
+      const noCrimEl = document.getElementById('metric-nocrim');
+      if (noCrimEl) {
+        const nocrim = Number.isFinite(d.no_criminal_conviction) ? d.no_criminal_conviction : null;
+        if (nocrim !== null && total !== null && total > 0) {
+          const pct = ((nocrim / total) * 100).toFixed(1);
+          const dateText = d.no_criminal_conviction_date ? ` (as of ${d.no_criminal_conviction_date})` : '';
+          noCrimEl.textContent = `${numberFormatter.format(nocrim)} people (${pct}%) in ICE detention had no criminal conviction${dateText}.`;
+        } else {
+          noCrimEl.textContent = '';
+        }
+      }
+
+      const atdEl = document.getElementById('metric-atd');
+      if (atdEl) {
+        const monitored = Number.isFinite(d.atd_monitored) ? d.atd_monitored : null;
+        if (monitored !== null) {
+          const dateText = d.atd_monitored_date ? ` (as of ${d.atd_monitored_date})` : '';
+          atdEl.textContent = `ICE Alternatives to Detention programs are currently monitoring ${numberFormatter.format(monitored)} people${dateText}.`;
+        } else {
+          atdEl.textContent = '';
+        }
+      }
+    }
+
+    function renderTrendChart(history) {
+      const canvas = document.getElementById('detention-chart');
+      const wrapper = canvas ? canvas.closest('.chart-wrapper') : null;
+      if (!window.Chart) {
+        if (wrapper) {
+          wrapper.classList.add('chart-wrapper--hidden');
+        }
+        return;
+      }
+      if (!canvas) {
+        return;
+      }
+      const ordered = sortEntriesByTimestamp(history, 'asc');
+      const sorted = ordered
+        .filter(entry => Number.isFinite(entry.detention_total))
+        .map(entry => ({
+          entry,
+          timestamp: getEntryTimestamp(entry)
+        }))
+        .filter(item => Number.isFinite(item.timestamp));
+
+      if (sorted.length < 2) {
+        if (wrapper) {
+          wrapper.classList.add('chart-wrapper--hidden');
+        }
+        return;
+      }
+
+      const labels = sorted.map(item => formatEntryDate(item.entry));
+      const totals = sorted.map(item => item.entry.detention_total);
+
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'People in ICE detention',
+              data: totals,
+              fill: true,
+              borderColor: '#0b57d0',
+              backgroundColor: 'rgba(11, 87, 208, 0.15)',
+              tension: 0.25,
+              pointRadius: 3,
+              pointHoverRadius: 5
+            }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          responsive: true,
+          scales: {
+            y: {
+              ticks: {
+                callback: value => numberFormatter.format(value)
+              },
+              title: {
+                display: true,
+                text: 'People detained'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: context => `${numberFormatter.format(context.parsed.y)} people`
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      });
+    }
+
+    function renderTrendNote(history) {
+      const note = document.getElementById('trend-note');
+      if (!note) {
+        return;
+      }
+      const sorted = sortEntriesByTimestamp(history, 'asc');
+      if (!sorted.length) {
+        note.textContent = 'Historical data unavailable at this time.';
+        return;
+      }
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const firstLabel = formatEntryDate(first);
+      const lastLabel = formatEntryDate(last);
+
+      if (firstLabel === lastLabel) {
+        note.textContent = `Latest verified update: ${lastLabel}.`;
+      } else {
+        note.textContent = `Tracking ${sorted.length} verified updates from ${firstLabel} through ${lastLabel}.`;
+      }
+    }
+
+    function renderHistoryTable(history) {
+      const container = document.getElementById('history-table');
+      if (!container) {
+        return;
+      }
+      container.innerHTML = '';
+      if (!history.length) {
+        container.textContent = 'Historical data unavailable at this time.';
+        return;
+      }
+      const sorted = sortEntriesByTimestamp(history, 'desc');
+      const rows = sorted.slice(0, 7);
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th scope="col">Report date</th><th scope="col">In detention</th><th scope="col">No conviction</th><th scope="col">ATD monitored</th></tr>';
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      rows.forEach(entry => {
+        const row = document.createElement('tr');
+
+        const dateCell = document.createElement('td');
+        dateCell.textContent = formatEntryDate(entry);
+        const retrieved = formatRetrievedAt(entry);
+        if (retrieved) {
+          dateCell.title = `Snapshot captured ${retrieved}`;
+        }
+        row.appendChild(dateCell);
+
+        ['detention_total', 'no_criminal_conviction', 'atd_monitored'].forEach(key => {
+          const cell = document.createElement('td');
+          cell.textContent = formatNumber(entry[key]);
+          row.appendChild(cell);
+        });
+
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+
+      container.appendChild(table);
+    }
+
+    async function loadDashboard() {
+      try {
+        const currentPromise = fetch('data/detentions.json', { cache: 'no-store' }).then(response => {
+          if (!response.ok) {
+            throw new Error('Unable to load detention metrics.');
+          }
+          return response.json();
+        });
+
+        const historyPromise = fetch('data/detentions_history.json', { cache: 'no-store' })
+          .then(response => (response.ok ? response.json() : []))
+          .catch(() => []);
+
+        const [currentData, historyRaw] = await Promise.all([currentPromise, historyPromise]);
+
+        updateCurrentMetrics(currentData);
+
+        const history = ensureCurrentSnapshot(sanitizeHistory(historyRaw), currentData);
+
+        renderTrendChart(history);
+        renderTrendNote(history);
+        renderHistoryTable(history);
+      } catch (error) {
+        console.error('Unable to load ICE × Protocol dashboard data.', error);
+        const countEl = document.getElementById('count');
+        if (countEl) {
+          countEl.textContent = 'error';
+        }
+      }
+    }
+
+    loadDashboard();
   </script>
 </body>
 </html>
