@@ -1,56 +1,137 @@
 [
-  {
-    "detention_total": 57861,
-    "detention_total_date": "June 29, 2025",
-    "no_criminal_conviction": 41495,
-    "no_criminal_conviction_date": "June 29, 2025",
-    "atd_monitored": 183091,
-    "atd_monitored_date": "June 28, 2025",
-    "retrieved_at": "2025-06-30T14:20:00Z"
-  },
-  {
-    "detention_total": 56816,
-    "detention_total_date": "July 13, 2025",
-    "no_criminal_conviction": 40643,
-    "no_criminal_conviction_date": "July 13, 2025",
-    "atd_monitored": 182822,
-    "atd_monitored_date": "July 12, 2025",
-    "retrieved_at": "2025-07-14T13:55:00Z"
-  },
-  {
-    "detention_total": 56945,
-    "detention_total_date": "July 27, 2025",
-    "no_criminal_conviction": 40461,
-    "no_criminal_conviction_date": "July 27, 2025",
-    "atd_monitored": 182799,
-    "atd_monitored_date": "July 26, 2025",
-    "retrieved_at": "2025-07-28T12:48:00Z"
-  },
-  {
-    "detention_total": 59380,
-    "detention_total_date": "August 10, 2025",
-    "no_criminal_conviction": 41822,
-    "no_criminal_conviction_date": "August 10, 2025",
-    "atd_monitored": 182617,
-    "atd_monitored_date": "August 9, 2025",
-    "retrieved_at": "2025-08-11T15:10:00Z"
-  },
-  {
-    "detention_total": 61226,
-    "detention_total_date": "August 24, 2025",
-    "no_criminal_conviction": 43021,
-    "no_criminal_conviction_date": "August 24, 2025",
-    "atd_monitored": 182584,
-    "atd_monitored_date": "August 23, 2025",
-    "retrieved_at": "2025-08-25T11:30:00Z"
-  },
-  {
-    "detention_total": 58766,
-    "detention_total_date": "September 7, 2025",
-    "no_criminal_conviction": 41589,
-    "no_criminal_conviction_date": "September 7, 2025",
-    "atd_monitored": 181401,
-    "atd_monitored_date": "September 6, 2025",
-    "retrieved_at": "2025-09-08T13:05:00Z"
-  }
+	{
+		"detention_total": 43759,
+		"detention_total_date": "February 23, 2025",
+		"no_criminal_conviction": 30955,
+		"no_criminal_conviction_date": "February 23, 2025",
+		"atd_monitored": 185511,
+		"atd_monitored_date": "February 21, 2025",
+		"retrieved_at": "2025-02-24T06:00:00Z"
+	},
+	{
+		"detention_total": 46269,
+		"detention_total_date": "March 9, 2025",
+		"no_criminal_conviction": 32418,
+		"no_criminal_conviction_date": "March 9, 2025",
+		"atd_monitored": 183784,
+		"atd_monitored_date": "March 7, 2025",
+		"retrieved_at": "2025-03-10T06:00:00Z"
+	},
+	{
+		"detention_total": 47892,
+		"detention_total_date": "March 23, 2025",
+		"no_criminal_conviction": 33523,
+		"no_criminal_conviction_date": "March 23, 2025",
+		"atd_monitored": 183884,
+		"atd_monitored_date": "March 22, 2025",
+		"retrieved_at": "2025-03-24T06:00:00Z"
+	},
+	{
+		"detention_total": 47928,
+		"detention_total_date": "April 6, 2025",
+		"no_criminal_conviction": 33314,
+		"no_criminal_conviction_date": "April 6, 2025",
+		"atd_monitored": 183635,
+		"atd_monitored_date": "April 5, 2025",
+		"retrieved_at": "2025-04-07T06:00:00Z"
+	},
+	{
+		"detention_total": 49184,
+		"detention_total_date": "April 20, 2025",
+		"no_criminal_conviction": 33994,
+		"no_criminal_conviction_date": "April 20, 2025",
+		"atd_monitored": 184342,
+		"atd_monitored_date": "April 18, 2025",
+		"retrieved_at": "2025-04-21T06:00:00Z"
+	},
+	{
+		"detention_total": 49005,
+		"detention_total_date": "May 4, 2025",
+		"no_criminal_conviction": 33980,
+		"no_criminal_conviction_date": "May 4, 2025",
+		"atd_monitored": 184899,
+		"atd_monitored_date": "May 3, 2025",
+		"retrieved_at": "2025-05-05T06:00:00Z"
+	},
+	{
+		"detention_total": 48870,
+		"detention_total_date": "May 18, 2025",
+		"no_criminal_conviction": 33861,
+		"no_criminal_conviction_date": "May 18, 2025",
+		"atd_monitored": 185675,
+		"atd_monitored_date": "May 17, 2025",
+		"retrieved_at": "2025-05-19T06:00:00Z"
+	},
+	{
+		"detention_total": 51302,
+		"detention_total_date": "June 1, 2025",
+		"no_criminal_conviction": 36109,
+		"no_criminal_conviction_date": "June 1, 2025",
+		"atd_monitored": 185824,
+		"atd_monitored_date": "May 31, 2025",
+		"retrieved_at": "2025-06-02T06:00:00Z"
+	},
+	{
+		"detention_total": 56397,
+		"detention_total_date": "June 15, 2025",
+		"no_criminal_conviction": 40433,
+		"no_criminal_conviction_date": "June 15, 2025",
+		"atd_monitored": 183756,
+		"atd_monitored_date": "June 14, 2025",
+		"retrieved_at": "2025-06-16T06:00:00Z"
+	},
+	{
+		"detention_total": 57861,
+		"detention_total_date": "June 29, 2025",
+		"no_criminal_conviction": 41495,
+		"no_criminal_conviction_date": "June 29, 2025",
+		"atd_monitored": 183091,
+		"atd_monitored_date": "June 28, 2025",
+		"retrieved_at": "2025-06-30T06:00:00Z"
+	},
+	{
+		"detention_total": 56816,
+		"detention_total_date": "July 13, 2025",
+		"no_criminal_conviction": 40643,
+		"no_criminal_conviction_date": "July 13, 2025",
+		"atd_monitored": 182822,
+		"atd_monitored_date": "July 12, 2025",
+		"retrieved_at": "2025-07-14T06:00:00Z"
+	},
+	{
+		"detention_total": 56945,
+		"detention_total_date": "July 27, 2025",
+		"no_criminal_conviction": 40461,
+		"no_criminal_conviction_date": "July 27, 2025",
+		"atd_monitored": 182799,
+		"atd_monitored_date": "July 26, 2025",
+		"retrieved_at": "2025-07-28T06:00:00Z"
+	},
+	{
+		"detention_total": 59380,
+		"detention_total_date": "August 10, 2025",
+		"no_criminal_conviction": 41822,
+		"no_criminal_conviction_date": "August 10, 2025",
+		"atd_monitored": 182617,
+		"atd_monitored_date": "August 9, 2025",
+		"retrieved_at": "2025-08-11T06:00:00Z"
+	},
+	{
+		"detention_total": 61226,
+		"detention_total_date": "August 24, 2025",
+		"no_criminal_conviction": 43021,
+		"no_criminal_conviction_date": "August 24, 2025",
+		"atd_monitored": 182584,
+		"atd_monitored_date": "August 23, 2025",
+		"retrieved_at": "2025-08-25T06:00:00Z"
+	},
+	{
+		"detention_total": 58766,
+		"detention_total_date": "September 7, 2025",
+		"no_criminal_conviction": 41589,
+		"no_criminal_conviction_date": "September 7, 2025",
+		"atd_monitored": 181401,
+		"atd_monitored_date": "September 6, 2025",
+		"retrieved_at": "2025-09-08T06:00:00Z"
+	}
 ]
