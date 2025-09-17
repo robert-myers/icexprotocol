@@ -1,78 +1,134 @@
-import requests
-from bs4 import BeautifulSoup
 import json
 import re
+from pathlib import Path
+from typing import Optional
 
-url = "https://tracreports.org/immigration/quickfacts/"
-resp = requests.get(url)
-soup = BeautifulSoup(resp.text, "html.parser")
+import requests
+from bs4 import BeautifulSoup, Tag
 
-output = {}
+URL = "https://tracreports.org/immigration/quickfacts/"
+OUTPUT_PATH = Path("data/detentions.json")
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; ICE x Protocol scraper/1.0; +https://icexprotocol.com/)"
+}
 
-# 1. Total in ICE detention (first "font-bold text-5xl" number)
-all_bold_numbers = soup.find_all("div", class_="font-bold text-5xl")
-if all_bold_numbers and len(all_bold_numbers) > 0:
-    output["detention_total"] = int(all_bold_numbers[0].text.replace(",", "").strip())
-else:
-    output["detention_total"] = None
-
-# 2. Total in ICE detention date ("in detention on ...")
-dates = soup.find_all(string=lambda t: "in detention on" in t or "in ICE detention according to" in t)
-detention_date = None
-for d in dates:
-    nxt = d.find_next(string=True)
-    if nxt and "," in nxt:
-        detention_date = nxt.strip().replace(".", "")
-        break
-output["detention_total_date"] = detention_date
+DIGITS_ONLY_RE = re.compile(r"^\d[\d,]*$")
+NUMBER_WITH_COMMAS_RE = re.compile(r"\b\d{1,3}(?:,\d{3})+\b")
+LARGE_NUMBER_RE = re.compile(r"\b\d{4,}\b")
+DATE_RE = re.compile(r"[A-Za-z]+\s+\d{1,2},\s+\d{4}")
+MONTH_RE = re.compile(
+    r"(january|february|march|april|may|june|july|august|september|october|november|december)",
+    re.IGNORECASE,
+)
 
 
-# 3. No criminal conviction stats
-nocrim_number = None
-nocrim_date = None
-conviction_text_node = soup.find(string=lambda t: "no criminal conviction" in t.lower())
-if conviction_text_node:
-    # Work within the surrounding grid card for this fact
-    container = conviction_text_node.find_parent("div", class_="grid")
-    if container:
-        # Find the first numeric <strong> inside this card (that is NOT a percent)
-        for strong in container.find_all("strong"):
-            txt = strong.text.strip().replace(",", "")
-            if txt.isdigit():
-                nocrim_number = int(txt)
-                break
-        # Find a <strong> that looks like a date (e.g. June 15, 2025)
-        for strong in container.find_all("strong"):
-            if re.search(r"[A-Za-z]+\s+\d{1,2},\s+\d{4}", strong.text):
-                nocrim_date = strong.text.strip()
-                break
-
-output["no_criminal_conviction"] = nocrim_number
-output["no_criminal_conviction_date"] = nocrim_date
+class ScraperError(RuntimeError):
+    """Raised when the TRAC facts page cannot be parsed."""
 
 
-# 4. ATD monitored stats
-atd_number = None
-atd_date = None
-atd_text_node = soup.find(string=lambda t: "alternatives to detention" in t.lower() and "monitoring" in t.lower())
-if atd_text_node:
-    container = atd_text_node.find_parent("div", class_="grid")
-    if container:
-        # Find a big bold number in this card
-        for bold in container.find_all("div", class_="font-bold text-5xl"):
-            num_txt = bold.text.replace(",", "").strip()
-            if num_txt.isdigit():
-                atd_number = int(num_txt)
-                break
-        # Pull the first date-looking string in the container
-        date_match = re.search(r"[A-Za-z]+\s+\d{1,2},\s+\d{4}", container.get_text())
-        if date_match:
-            atd_date = date_match.group(0)
+def fetch_soup(url: str) -> BeautifulSoup:
+    response = requests.get(url, headers=HEADERS, timeout=20)
+    response.raise_for_status()
+    return BeautifulSoup(response.text, "html.parser")
 
-output["atd_monitored"] = atd_number
-output["atd_monitored_date"] = atd_date
 
-with open("data/detentions.json", "w") as f:
-    json.dump(output, f, indent=2)
+def find_fact_card(soup: BeautifulSoup, fragment: str) -> Optional[Tag]:
+    anchor = soup.find(
+        "a",
+        href=lambda value: isinstance(value, str) and value.strip() == f"#{fragment}",
+    )
+    if not anchor:
+        return None
 
-print(json.dumps(output, indent=2))
+    for ancestor in anchor.parents:
+        if getattr(ancestor, "name", None) != "div":
+            continue
+        if not ancestor.find("a", href=f"#{fragment}"):
+            continue
+        if ancestor.find(string=lambda s: isinstance(s, str) and "data current as of" in s.lower()):
+            return ancestor
+    return None
+
+
+def extract_primary_integer(card: Optional[Tag]) -> Optional[int]:
+    if card is None:
+        return None
+
+    for node in card.find_all(string=True):
+        text = node.strip()
+        if not text or "%" in text or any(ch.isalpha() for ch in text):
+            continue
+        if DIGITS_ONLY_RE.fullmatch(text):
+            return int(text.replace(",", ""))
+
+    text = card.get_text(" ", strip=True)
+
+    comma_match = NUMBER_WITH_COMMAS_RE.search(text)
+    if comma_match:
+        return int(comma_match.group(0).replace(",", ""))
+
+    for match in LARGE_NUMBER_RE.finditer(text):
+        candidate = match.group(0)
+        if _is_likely_year(text, match.start()):
+            continue
+        return int(candidate)
+
+    return None
+
+
+def extract_ratio_numerator(card: Optional[Tag]) -> Optional[int]:
+    if card is None:
+        return None
+    text = card.get_text(" ", strip=True)
+    match = re.search(r"([0-9][0-9,]*)\s+out of", text, re.IGNORECASE)
+    if match:
+        return int(match.group(1).replace(",", ""))
+    return extract_primary_integer(card)
+
+
+def extract_date(card: Optional[Tag]) -> Optional[str]:
+    if card is None:
+        return None
+    text = card.get_text(" ", strip=True)
+    match = DATE_RE.search(text)
+    if not match:
+        return None
+    date_text = match.group(0).replace(" ,", ",")
+    return date_text.strip().rstrip(".")
+
+
+def _is_likely_year(text: str, index: int) -> bool:
+    start = max(0, index - 25)
+    context = text[start:index].lower()
+    return bool(MONTH_RE.search(context))
+
+
+def main() -> None:
+    soup = fetch_soup(URL)
+
+    total_card = find_fact_card(soup, "detention_held")
+    nocrim_card = find_fact_card(soup, "detention_nocrim")
+    atd_card = find_fact_card(soup, "detention_numatd")
+
+    if not total_card or not nocrim_card or not atd_card:
+        raise ScraperError("Could not locate one or more fact cards on the TRAC page")
+
+    output = {
+        "detention_total": extract_primary_integer(total_card),
+        "detention_total_date": extract_date(total_card),
+        "no_criminal_conviction": extract_ratio_numerator(nocrim_card),
+        "no_criminal_conviction_date": extract_date(nocrim_card),
+        "atd_monitored": extract_primary_integer(atd_card),
+        "atd_monitored_date": extract_date(atd_card),
+    }
+
+    missing = [key for key, value in output.items() if value is None]
+    if missing:
+        raise ScraperError(f"Missing values for: {', '.join(missing)}")
+
+    OUTPUT_PATH.write_text(json.dumps(output, indent=2))
+    print(json.dumps(output, indent=2))
+
+
+if __name__ == "__main__":
+    main()
