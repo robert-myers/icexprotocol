@@ -1,5 +1,23 @@
 [
 	{
+		"detention_total": 39238,
+		"detention_total_date": "January 26, 2025",
+		"no_criminal_conviction": 28535,
+		"no_criminal_conviction_date": "January 26, 2025",
+		"atd_monitored": 188304,
+		"atd_monitored_date": "January 11, 2025",
+		"retrieved_at": "2025-01-27T06:00:00Z"
+	},
+	{
+		"detention_total": 41169,
+		"detention_total_date": "February 9, 2025",
+		"no_criminal_conviction": 29252,
+		"no_criminal_conviction_date": "February 9, 2025",
+		"atd_monitored": 188304,
+		"atd_monitored_date": "January 11, 2025",
+		"retrieved_at": "2025-02-10T06:00:00Z"
+	}
+	{
 		"detention_total": 43759,
 		"detention_total_date": "February 23, 2025",
 		"no_criminal_conviction": 30955,
