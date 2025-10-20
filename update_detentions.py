@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup, Tag
 
-URL = "https://tracreports.org/immigration/quickfacts/"
+URL = "https://tracreports.org/immigration/quickfacts/detention.html"
 OUTPUT_PATH = Path("data/detentions.json")
 HISTORY_PATH = Path("data/detentions_history.json")
 HEADERS = {
